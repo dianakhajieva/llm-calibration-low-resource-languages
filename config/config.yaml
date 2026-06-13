@@ -1,0 +1,80 @@
+# ---------------------------------------------------------------------------
+# Central configuration for the calibration study.
+# Edit THIS file to change which models, languages and settings you use.
+# Every script reads from here, so you should not need to hardcode settings
+# anywhere else.
+# ---------------------------------------------------------------------------
+
+# Reproducibility: the same seed always selects the same sample of questions.
+seed: 42
+
+# How many parallel questions to sample from Belebele (max is 900).
+# Start small (e.g. 10) while testing, then raise to ~500 for the real run.
+sample_size: 500
+
+# The three languages, using Belebele's FLORES-200 language codes.
+# Do not change the codes unless you verified them on the dataset page.
+languages:
+  - code: eng_Latn
+    name: English
+  - code: rus_Cyrl
+    name: Russian
+  - code: uzn_Latn
+    name: Uzbek
+
+# The models you will TEST (not train). For each one:
+#   id                 a short nickname you choose, used in result files
+#   provider           one of: openai, google, anthropic, huggingface
+#   model_name         the exact model string the provider expects
+#   supports_logprobs  true if we can read token probabilities from it
+# Comment out (with #) any model you are not using yet.
+models:
+  - id: gpt-4o
+    provider: openai
+    model_name: gpt-4o              # verify the current name in your OpenAI account
+    supports_logprobs: true
+
+  - id: gemini
+    provider: google
+    model_name: gemini-1.5-pro      # use whichever Gemini model you have access to
+    supports_logprobs: false        # the Gemini API does not expose token logprobs
+
+  # - id: claude
+  #   provider: anthropic
+  #   model_name: claude-3-5-sonnet-latest
+  #   supports_logprobs: false      # the Claude API does not expose token logprobs
+
+  - id: qwen2.5-7b
+    provider: huggingface
+    model_name: Qwen/Qwen2.5-7B-Instruct
+    supports_logprobs: true
+
+  - id: llama3.1-8b
+    provider: huggingface
+    model_name: meta-llama/Llama-3.1-8B-Instruct   # needs HF access approval first
+    supports_logprobs: true
+
+  - id: aya-expanse-8b
+    provider: huggingface
+    model_name: CohereForAI/aya-expanse-8b
+    supports_logprobs: true
+
+# Which confidence-elicitation methods to run.
+#   verbalized : ask the model to state a number 0-100 (works on every model)
+#   logprob    : read the model's own probability for its chosen answer
+#                (only runs on models with supports_logprobs: true)
+methods:
+  - verbalized
+  - logprob
+
+# Generation settings used when asking for answers.
+generation:
+  temperature: 0       # 0 = deterministic, important for reproducibility
+  max_new_tokens: 256  # enough room for an answer plus a confidence line
+
+# Where files are read from and written to (relative to the project root).
+paths:
+  data_sample: data/sample/belebele_sample.jsonl
+  raw_outputs_dir: results/raw_outputs
+  processed_results: results/processed/results.csv
+  figures_dir: figures

@@ -1,0 +1,21 @@
+# Core (always needed)
+datasets               # download Belebele from Hugging Face
+pandas                 # results tables
+numpy                  # math for the metrics
+matplotlib             # reliability diagrams
+scikit-learn           # the AUROC metric
+pyyaml                 # read config.yaml
+python-dotenv          # load API keys from .env
+tqdm                   # progress bars
+
+# Provider SDKs (install the ones for the models you use)
+openai                 # GPT models
+google-generativeai    # Gemini models
+anthropic              # Claude models (optional)
+
+# Open-weight models, ONLY if you run them locally (Qwen, Llama, Aya).
+# IMPORTANT: install the right torch build for your machine FIRST, following
+# https://pytorch.org/get-started/locally/ , then install these.
+transformers
+torch
+accelerate             # helps load large models across GPU/CPU

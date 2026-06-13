@@ -1,11 +1,20 @@
-__pycache__/
-*.pyc
+# Secrets — NEVER commit your API keys
 .env
-data/raw/
-*.pt
-*.h5
-*.pkl
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Jupyter
 .ipynb_checkpoints/
-*.csv
-*.zip
-*.log
+
+# Large or regenerable outputs (the raw replies can be re-created by re-running)
+results/raw_outputs/*
+!results/raw_outputs/.gitkeep
+data/raw/*
+!data/raw/.gitkeep
+
+# OS
+.DS_Store
