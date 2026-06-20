@@ -148,3 +148,68 @@ Upcoming tasks:
 * Calibration metric implementation
 * Reliability diagram generation
 * Cross-language evaluation
+
+# Milestone 2 Completed
+
+## Prompt Design
+
+A standardized prompt template was created to ensure consistent evaluation across all models and languages.
+
+Prompt requirements:
+
+* Present passage, question, and answer choices.
+* Force selection of exactly one answer.
+* Require confidence reporting on a 0–100 scale.
+* Use a fixed output format for automated parsing.
+
+Example output:
+
+```text
+ANSWER: B
+CONFIDENCE: 87
+```
+
+## Response Parsing
+
+A parser was implemented to automatically extract:
+
+* Predicted answer
+* Confidence score
+
+from model responses.
+
+Example:
+
+Input:
+
+```text
+ANSWER: B
+CONFIDENCE: 87
+```
+
+Output:
+
+```python
+{
+    "answer": "B",
+    "confidence": 87
+}
+```
+
+## Validation
+
+* Prompt template successfully generated.
+* Parser successfully extracted answers and confidence scores.
+* Components are ready for integration with model APIs.
+
+## Next Milestone
+
+Model Integration and Pilot Evaluation
+
+Planned tasks:
+
+* Connect selected LLM APIs.
+* Run a pilot experiment on a small sample of questions.
+* Validate answer extraction and confidence collection.
+* Store outputs for calibration analysis.
+
