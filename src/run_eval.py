@@ -1,22 +1,12 @@
 """
 Evaluation pipeline for multilingual calibration experiments.
 
-Pipeline:
-
-config.yaml
-    ↓
-sample_500.csv
-    ↓
-build_prompt()
-    ↓
-provider.generate()
-    ↓
-parse_response()
-    ↓
-prediction dictionary
-
-This version uses a DummyProvider so the pipeline can be tested
-without API keys.
+Current version:
+- Loads configuration
+- Loads benchmark dataset
+- Runs GPT-4o on 5 questions for each language
+- Parses responses
+- Saves predictions to CSV
 """
 
 from pathlib import Path
@@ -24,14 +14,18 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from prompts import build_prompt
-from parse import parse_response
-from models import get_provider
+from src.prompts import build_prompt
+from src.parse import parse_response
+from src.models import get_provider
 
+ANSWER_MAP = {
+    "1": "A",
+    "2": "B",
+    "3": "C",
+    "4": "D",
+}
 
 def load_config():
-    """Load experiment configuration."""
-
     config_path = Path("config/config.yaml")
 
     with open(config_path, "r", encoding="utf-8") as f:
@@ -39,97 +33,100 @@ def load_config():
 
 
 def load_dataset(config):
-    """Load benchmark dataset."""
-
-    sample_path = config["paths"]["sample_file"]
-
-    return pd.read_csv(sample_path)
+    return pd.read_csv(config["paths"]["sample_file"])
 
 
-def build_first_prompt(df):
-    """Create a prompt from the first benchmark question."""
-
-    row = df.iloc[0]
-
-    prompt = build_prompt(
-        passage=row["en_passage"],
-        question=row["en_question"],
-        a1=row["en_a1"],
-        a2=row["en_a2"],
-        a3=row["en_a3"],
-        a4=row["en_a4"],
+def build_language_prompt(row, language):
+    return build_prompt(
+        passage=row[f"{language}_passage"],
+        question=row[f"{language}_question"],
+        a1=row[f"{language}_a1"],
+        a2=row[f"{language}_a2"],
+        a3=row[f"{language}_a3"],
+        a4=row[f"{language}_a4"],
     )
-
-    return prompt
 
 
 def main():
 
-    # ------------------------------------------------------------
-    # Load configuration
-    # ------------------------------------------------------------
-
     config = load_config()
 
-    print("=" * 60)
-    print("Configuration loaded")
-    print("=" * 60)
-
-    # ------------------------------------------------------------
-    # Load dataset
-    # ------------------------------------------------------------
-
     df = load_dataset(config)
-
-    print(f"Dataset : {config['dataset']['name']}")
-    print(f"Questions: {len(df)}")
-
-    # ------------------------------------------------------------
-    # Load provider
-    # ------------------------------------------------------------
 
     model_cfg = config["models"][0]
 
     provider = get_provider(
-        provider_name=model_cfg["provider"],
-        model_name=model_cfg["model_name"],
+        model_cfg["provider"],
+        model_cfg["model_name"]
     )
 
-    print(f"Provider : {model_cfg['provider']}")
-    print(f"Model    : {provider.model_name}")
+    results = []
 
-    # ------------------------------------------------------------
-    # Build prompt
-    # ------------------------------------------------------------
+    LANGUAGE_PREFIX = {
+        "eng_Latn": "en",
+        "rus_Cyrl": "ru",
+        "uzn_Latn": "uz",
+    }
 
-    prompt = build_first_prompt(df)
+    test_size = min(5, config["sample_size"])
 
-    print("\n" + "=" * 60)
-    print("Prompt")
-    print("=" * 60)
-    print(prompt)
+    for language in config["languages"]:
 
-    # ------------------------------------------------------------
-    # Generate response
-    # ------------------------------------------------------------
+        lang_name = language["name"]
+        lang_code = LANGUAGE_PREFIX[language["code"]]
 
-    response = provider.generate(prompt)
+        print("=" * 70)
+        print(f"Running {lang_name}")
+        print("=" * 70)
 
-    print("\n" + "=" * 60)
-    print("Raw Model Response")
-    print("=" * 60)
-    print(response)
+        for idx, row in df.head(test_size).iterrows():
 
-    # ------------------------------------------------------------
-    # Parse response
-    # ------------------------------------------------------------
+            print(f"Question {idx + 1}")
 
-    parsed = parse_response(response)
+            prompt = build_language_prompt(row, lang_code)
 
-    print("\n" + "=" * 60)
-    print("Parsed Response")
-    print("=" * 60)
-    print(parsed)
+            raw_response = provider.generate(prompt)
+
+            parsed = parse_response(raw_response)
+
+            predicted = parsed["answer"]
+            confidence = parsed["confidence"]
+
+            correct_number = str(row[f"{lang_code}_correct"])
+            correct_letter = ANSWER_MAP[correct_number]
+
+            results.append({
+                "question_id": idx + 1,
+                "language": lang_name,
+                "model": model_cfg["model_name"],
+                "predicted_answer": predicted,
+                "confidence": confidence,
+                "correct_number": correct_number,
+                "correct_answer": correct_letter,
+                "is_correct": predicted == correct_letter,
+            })
+
+            print(
+                f"Predicted={predicted} | "
+                f"Correct={correct_letter} | "
+                f"Confidence={confidence}"
+            )
+
+        print()
+
+    results_df = pd.DataFrame(results)
+
+    output_dir = Path(config["paths"]["raw_outputs_dir"])
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    output_file = output_dir / "openai_test.csv"
+
+    results_df.to_csv(output_file, index=False)
+
+    print("=" * 70)
+    print("Finished!")
+    print(f"Saved results to: {output_file}")
+    print("=" * 70)
 
 
 if __name__ == "__main__":

@@ -11,6 +11,12 @@ Actual API integrations will be implemented later.
 """
 
 from abc import ABC, abstractmethod
+import os
+
+from dotenv import load_dotenv
+from openai import OpenAI
+
+load_dotenv()
 
 
 class BaseProvider(ABC):
@@ -68,16 +74,33 @@ CONFIDENCE: 87"""
 class OpenAIProvider(BaseProvider):
     """Provider for OpenAI models."""
 
+    def __init__(self, model_name: str):
+        super().__init__(model_name)
+
+        self.client = OpenAI(
+            api_key=os.getenv("OPENAI_API_KEY")
+        )
+
     def generate(
         self,
         prompt: str,
         temperature: float = 0.0,
         max_new_tokens: int = 256,
     ) -> str:
-        raise NotImplementedError(
-            "OpenAI provider has not been implemented yet."
+
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            temperature=temperature,
+            max_tokens=max_new_tokens,
         )
 
+        return response.choices[0].message.content
 
 class GoogleProvider(BaseProvider):
     """Provider for Google Gemini models."""

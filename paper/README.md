@@ -213,3 +213,12 @@ Planned tasks:
 * Validate answer extraction and confidence collection.
 * Store outputs for calibration analysis.
 
+## Milestone 4 — OpenAI Integration
+
+Completed:
+
+- Integrated GPT-4o API.
+- Verified prompt formatting.
+- Verified parser.
+- Executed evaluation on 5 English, 5 Russian, and 5 Uzbek questions.
+- Generated prediction CSV in `results/raw_outputs/openai_test.csv`.

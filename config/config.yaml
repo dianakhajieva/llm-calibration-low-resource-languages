@@ -50,10 +50,10 @@ languages:
 
 models:
 
-  # - id: gpt-4o
-  #   provider: openai
-  #   model_name: gpt-4o
-  #   supports_logprobs: true
+  - id: gpt-4o
+    provider: openai
+    model_name: gpt-4o
+    supports_logprobs: false
 
   # - id: gemini
   #   provider: google
@@ -75,10 +75,10 @@ models:
   #   model_name: CohereForAI/aya-expanse-8B
   #   supports_logprobs: true
 
-  - id: dummy
-    provider: dummy
-    model_name: dummy
-    supports_logprobs: false
+  # - id: dummy
+  #   provider: dummy
+  #   model_name: dummy
+  #   supports_logprobs: false
 
 # ---------------------------------------------------------------------------
 # Confidence Extraction Methods
