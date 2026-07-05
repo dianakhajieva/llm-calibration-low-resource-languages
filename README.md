@@ -56,7 +56,7 @@ multilingual-llm-calibration/
 ├── notebooks/
 │   └── analysis.ipynb     load results, make the metrics table + plots  (run 3rd)
 ├── figures/               final reliability diagrams for the paper
-└── paper/                 your LaTeX / Overleaf project
+└── paper/                 LaTeX project
 ```
 
 ## Evaluation Metrics
