@@ -59,11 +59,20 @@ multilingual-llm-calibration/
 └── paper/                 your LaTeX / Overleaf project
 ```
 
+## Evaluation Metrics
+
+Planned metrics:
+
+- Accuracy
+- Exprected Calibration Error (ECE)
+- Brier Score
+- Reliability Diagram
+
 ## Setup
 
 1. Clone the repository and enter it:
    ```
-   git clone <your-repo-url>
+   git clone https://github.com/dianakhajieva/llm-calibration-low-resource-languages
    cd multilingual-llm-calibration
    ```
 
