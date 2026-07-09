@@ -12,9 +12,10 @@ Actual API integrations will be implemented later.
 
 from abc import ABC, abstractmethod
 import os
-
-from dotenv import load_dotenv
+from google import genai
 from openai import OpenAI
+from dotenv import load_dotenv
+from google.genai import types
 
 load_dotenv()
 
@@ -104,6 +105,17 @@ class OpenAIProvider(BaseProvider):
 
 class GoogleProvider(BaseProvider):
     """Provider for Google Gemini models."""
+        
+    def __init__(self, model_name: str):
+        super().__init__(model_name)
+
+        load_dotenv()
+
+        # 1. Initialize a Client object instead of using genai.configure()
+        self.client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+        
+        # We store the model_name to pass it during the generate call
+        self.model_name = model_name
 
     def generate(
         self,
@@ -111,10 +123,19 @@ class GoogleProvider(BaseProvider):
         temperature: float = 0.0,
         max_new_tokens: int = 256,
     ) -> str:
-        raise NotImplementedError(
-            "Google provider has not been implemented yet."
+
+        # 2. Use the client.models.generate_content method
+        # 3. Use types.GenerateContentConfig for the parameters
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=temperature,
+                max_output_tokens=max_new_tokens,
+            )
         )
 
+        return response.text
 
 class AnthropicProvider(BaseProvider):
     """Provider for Anthropic Claude models."""
