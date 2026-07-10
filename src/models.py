@@ -136,15 +136,35 @@ class GoogleProvider(BaseProvider):
 class AnthropicProvider(BaseProvider):
     """Provider for Anthropic Claude models."""
 
+    def __init__(self, model_name):
+        super().__init__(model_name)
+
+        from anthropic import Anthropic
+
+        self.client = Anthropic(
+            api_key=os.getenv("ANTHROPIC_API_KEY")
+        )
+
     def generate(
         self,
-        prompt: str,
-        temperature: float = 0.0,
-        max_new_tokens: int = 256,
-    ) -> str:
-        raise NotImplementedError(
-            "Anthropic provider has not been implemented yet."
+        prompt,
+        temperature=0.0,
+        max_new_tokens=256,
+    ):
+
+        response = self.client.messages.create(
+            model=self.model_name,
+            max_tokens=max_new_tokens,
+            temperature=temperature,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
         )
+
+        return response.content[0].text
 
 
 class HuggingFaceProvider(BaseProvider):

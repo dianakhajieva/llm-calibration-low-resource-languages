@@ -60,10 +60,10 @@ models:
     model_name: gemini-2.5-flash
     supports_logprobs: false
 
-  # - id: claude
-  #   provider: anthropic
-  #   model_name: claude-3-5-sonnet-latest
-  #   supports_logprobs: false
+  - id: claude
+    provider: anthropic
+    model_name: claude-sonnet-4-6
+    supports_logprobs: false
 
   # - id: qwen2.5-7b
   #   provider: huggingface
