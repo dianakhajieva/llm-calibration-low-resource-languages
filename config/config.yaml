@@ -55,10 +55,10 @@ models:
     model_name: gpt-4o
     supports_logprobs: false
 
-  # - id: gemini
-  #   provider: google
-  #   model_name: gemini-2.5-flash
-  #   supports_logprobs: false
+  - id: gemini
+    provider: google
+    model_name: gemini-2.5-flash
+    supports_logprobs: false
 
   # - id: claude
   #   provider: anthropic
