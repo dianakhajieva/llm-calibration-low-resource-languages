@@ -105,7 +105,7 @@ class OpenAIProvider(BaseProvider):
 class GoogleProvider(BaseProvider):
     """Provider for Google Gemini models."""    
 
-    def __init__(self, model_name):
+    def __init__(self, model_name: str):
         super().__init__(model_name)
         
         import google.generativeai as genai        
@@ -118,10 +118,10 @@ class GoogleProvider(BaseProvider):
 
     def generate(
         self,
-        prompt,
-        temperature=0.0,
-        max_new_tokens=256,
-    ):
+        prompt: str,
+        temperature: float = 0.0,
+        max_new_tokens: int = 256,
+    ) -> str:
 
         response = self.model.generate_content(
             prompt,
@@ -136,7 +136,7 @@ class GoogleProvider(BaseProvider):
 class AnthropicProvider(BaseProvider):
     """Provider for Anthropic Claude models."""
 
-    def __init__(self, model_name):
+    def __init__(self, model_name:str):
         super().__init__(model_name)
 
         from anthropic import Anthropic
@@ -147,10 +147,10 @@ class AnthropicProvider(BaseProvider):
 
     def generate(
         self,
-        prompt,
-        temperature=0.0,
-        max_new_tokens=256,
-    ):
+        prompt: str,
+        temperature: float = 0.0,
+        max_new_tokens: int = 256,
+    ) -> str:
 
         response = self.client.messages.create(
             model=self.model_name,
@@ -166,9 +166,17 @@ class AnthropicProvider(BaseProvider):
 
         return response.content[0].text
 
-
 class HuggingFaceProvider(BaseProvider):
-    """Provider for Hugging Face hosted or local models."""
+    """Provider for Hugging Face Inference API."""
+
+    def __init__(self, model_name: str):
+        super().__init__(model_name)
+
+        from huggingface_hub import InferenceClient
+
+        self.client = InferenceClient(
+            api_key=os.getenv("HF_TOKEN")
+        )
 
     def generate(
         self,
@@ -176,9 +184,20 @@ class HuggingFaceProvider(BaseProvider):
         temperature: float = 0.0,
         max_new_tokens: int = 256,
     ) -> str:
-        raise NotImplementedError(
-            "Hugging Face provider has not been implemented yet."
+
+        response = self.client.chat_completion(
+            model=self.model_name,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            temperature=temperature,
+            max_tokens=max_new_tokens,
         )
+
+        return response.choices[0].message.content
 
 
 def get_provider(provider_name: str, model_name: str) -> BaseProvider:

@@ -61,7 +61,7 @@ def main():
     }
     
     # Small test while developing
-    test_size = min(2, config["sample_size"])
+    test_size = min(1, config["sample_size"])
 
     for model_cfg in config["models"]:
 
