@@ -107,7 +107,7 @@ paths:
 
   raw_outputs_dir: results/raw_outputs
 
-  processed_results: results/processed/results.csv
+  processed_results: results/processed/metrics.csv
 
   figures_dir: results/figures
 

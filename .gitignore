@@ -10,13 +10,22 @@ venv/
 # Jupyter
 .ipynb_checkpoints/
 
-# Large or regenerable outputs (the raw replies can be re-created by re-running)
+# Large or regenerable outputs
 results/raw_outputs/*
 !results/raw_outputs/.gitkeep
+
+results/processed/*
+!results/processed/.gitkeep
+
+results/figures/*
+!results/figures/.gitkeep
+
 data/raw/*
 !data/raw/.gitkeep
 
 # OS
 .DS_Store
+
+# Local environment
 myenv/
 .vscode/
