@@ -11,6 +11,7 @@ Actual API integrations will be implemented later.
 """
 
 from abc import ABC, abstractmethod
+from google.genai import types
 import os
 from dotenv import load_dotenv
 
@@ -103,36 +104,63 @@ class OpenAIProvider(BaseProvider):
         return response.choices[0].message.content
 
 class GoogleProvider(BaseProvider):
-    """Provider for Google Gemini models."""    
+    """Provider for Google Gemini models."""
 
     def __init__(self, model_name: str):
         super().__init__(model_name)
-        
-        import google.generativeai as genai        
 
-        genai.configure(
+        from google import genai
+        from google.genai import types
+
+        self.types = types
+
+        self.client = genai.Client(
             api_key=os.getenv("GOOGLE_API_KEY")
         )
-
-        self.model = genai.GenerativeModel(model_name)
 
     def generate(
         self,
         prompt: str,
         temperature: float = 0.0,
-        max_new_tokens: int = 256,
+        max_new_tokens: int = 512,
     ) -> str:
 
-        response = self.model.generate_content(
-            prompt,
-            generation_config={
-                "temperature": temperature,
-                "max_output_tokens": max_new_tokens,
-            },
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=prompt,
+            config=self.types.GenerateContentConfig(
+                temperature=temperature,
+                max_output_tokens=max_new_tokens,
+
+                thinking_config=self.types.ThinkingConfig(
+                    thinking_budget=0
+                ),
+
+                response_mime_type="application/json",
+
+                response_schema={
+                    "type": "object",
+                    "properties": {
+                        "answer": {
+                            "type": "string",
+                            "enum": ["A", "B", "C", "D"]
+                        },
+                        "confidence": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 100
+                        }
+                    },
+                    "required": [
+                        "answer",
+                        "confidence"
+                    ]
+                }
+            ),
         )
 
         return response.text
-
+    
 class AnthropicProvider(BaseProvider):
     """Provider for Anthropic Claude models."""
 

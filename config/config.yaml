@@ -65,15 +65,15 @@ models:
     model_name: claude-sonnet-4-6
     supports_logprobs: false
 
-  - id: qwen2.5-7b
-    provider: huggingface
-    model_name: Qwen/Qwen2.5-7B-Instruct
-    supports_logprobs: false
+  # - id: qwen2.5-7b
+  #   provider: huggingface
+  #   model_name: Qwen/Qwen2.5-7B-Instruct
+  #   supports_logprobs: false
 
-  - id: llama3.1-8b
-    provider: huggingface
-    model_name: meta-llama/Llama-3.1-8B-Instruct
-    supports_logprobs: false
+  # - id: llama3.1-8b
+  #   provider: huggingface
+  #   model_name: meta-llama/Llama-3.1-8B-Instruct
+  #   supports_logprobs: false
 
 # ---------------------------------------------------------------------------
 # Confidence Extraction Methods

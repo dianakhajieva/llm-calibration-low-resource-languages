@@ -8,16 +8,19 @@ Current version:
 - Evaluates multiple languages
 - Parses model responses
 - Saves one CSV per model
+- Retries failed API requests automatically
 """
 
 from pathlib import Path
 
-import pandas as pd
+import time
 import yaml
+import pandas as pd
 
 from src.prompts import build_prompt
 from src.parse import parse_response
 from src.models import get_provider
+
 
 ANSWER_MAP = {
     "1": "A",
@@ -25,6 +28,11 @@ ANSWER_MAP = {
     "3": "C",
     "4": "D",
 }
+
+
+MAX_RETRIES = 5
+RETRY_DELAY = 10  # seconds
+
 
 def load_config():
     config_path = Path("config/config.yaml")
@@ -48,6 +56,47 @@ def build_language_prompt(row, language):
     )
 
 
+def generate_and_parse_with_retry(
+    provider,
+    prompt,
+    temperature,
+    max_new_tokens,
+):
+    """
+    Generate a response and parse it.
+    Retries BOTH API errors and parsing errors.
+    """
+
+    for attempt in range(1, MAX_RETRIES + 1):
+
+        try:
+
+            raw_response = provider.generate(
+                prompt,
+                temperature=temperature,
+                max_new_tokens=max_new_tokens,
+            )
+
+            parsed = parse_response(raw_response)
+
+            if parsed is None:
+                raise ValueError("Could not parse model response.")
+
+            return raw_response, parsed
+
+        except Exception as e:
+
+            print(f"\nAttempt {attempt}/{MAX_RETRIES} failed.")
+            print(f"Error: {e}")
+
+            if attempt == MAX_RETRIES:
+                print("Maximum retries reached. Skipping this question.\n")
+                return None, None
+
+            print(f"Retrying in {RETRY_DELAY} seconds...\n")
+            time.sleep(RETRY_DELAY)
+
+
 def main():
 
     config = load_config()
@@ -59,9 +108,9 @@ def main():
         "rus_Cyrl": "ru",
         "uzn_Latn": "uz",
     }
-    
-    # Small test while developing
-    test_size = min(1, config["sample_size"])
+
+    # During development
+    test_size = min(config["sample_size"], len(df))
 
     for model_cfg in config["models"]:
 
@@ -91,13 +140,14 @@ def main():
 
                 prompt = build_language_prompt(row, lang_code)
 
-                raw_response = provider.generate(prompt)
-
-                parsed = parse_response(raw_response)
+                raw_response, parsed = generate_and_parse_with_retry(
+                    provider,
+                    prompt,
+                    temperature=config["generation"]["temperature"],
+                    max_new_tokens=config["generation"]["max_new_tokens"],
+                )
 
                 if parsed is None:
-                    print("Could not parse response:")
-                    print(raw_response)
                     continue
 
                 predicted = parsed["answer"]

@@ -210,7 +210,7 @@ def expected_calibration_error(
 # ---------------------------------------------------------------------
 
 
-def compute_metrics(df):
+def compute_metrics(df, config):
     """
     Compute metrics for every model-language pair
     and an overall summary for each model.
@@ -218,7 +218,19 @@ def compute_metrics(df):
 
     rows = []
 
+    # Number of expected questions per language
+    expected_per_language = config["sample_size"]
+
+    # Total expected questions across all languages
+    expected_overall = (
+        config["sample_size"]
+        * len(config["languages"])
+    )
+
+    # ---------------------------------------------------------
     # Per-language metrics
+    # ---------------------------------------------------------
+
     grouped = df.groupby(
         ["model", "language"],
         sort=True,
@@ -226,11 +238,18 @@ def compute_metrics(df):
 
     for (model, language), group in grouped:
 
+        answered = len(group)
+
+        if answered == 0:
+            continue
+
         rows.append(
             {
                 "model": model,
                 "language": language,
-                "num_questions": len(group),
+                "answered_questions": answered,
+                "expected_questions": expected_per_language,
+                "skipped_questions": expected_per_language - answered,
                 "accuracy": accuracy(group),
                 "average_confidence": average_confidence(group),
                 "brier_score": brier_score(group),
@@ -238,14 +257,27 @@ def compute_metrics(df):
             }
         )
 
-    # Overall metrics (all languages combined)
-    for model, group in df.groupby("model", sort=True):
+    # ---------------------------------------------------------
+    # Overall metrics
+    # ---------------------------------------------------------
+
+    for model, group in df.groupby(
+        "model",
+        sort=True,
+    ):
+
+        answered = len(group)
+
+        if answered == 0:
+            continue
 
         rows.append(
             {
                 "model": model,
                 "language": "Overall",
-                "num_questions": len(group),
+                "answered_questions": answered,
+                "expected_questions": expected_overall,
+                "skipped_questions": expected_overall - answered,
                 "accuracy": accuracy(group),
                 "average_confidence": average_confidence(group),
                 "brier_score": brier_score(group),
@@ -318,7 +350,10 @@ def main():
 
     predictions = load_prediction_files(config)
 
-    metrics = compute_metrics(predictions)
+    metrics = compute_metrics(
+      predictions,
+      config,
+   )
 
     output_path = save_metrics(
         metrics,
