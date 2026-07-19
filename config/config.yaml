@@ -2,7 +2,6 @@
 # Multilingual LLM Calibration Project Configuration
 #
 # Central configuration file for all experiments.
-# All scripts should read settings from here instead of hardcoding values.
 # ---------------------------------------------------------------------------
 
 experiment:
@@ -35,6 +34,12 @@ languages:
   - code: uzn_Latn
     name: Uzbek
 
+  - code: kaz_Cyrl
+    name: Kazakh
+
+  - code: mkd_Cyrl
+    name: Macedonian
+
 # ---------------------------------------------------------------------------
 # Models
 #
@@ -65,15 +70,6 @@ models:
     model_name: claude-sonnet-4-6
     supports_logprobs: false
 
-  # - id: qwen2.5-7b
-  #   provider: huggingface
-  #   model_name: Qwen/Qwen2.5-7B-Instruct
-  #   supports_logprobs: false
-
-  # - id: llama3.1-8b
-  #   provider: huggingface
-  #   model_name: meta-llama/Llama-3.1-8B-Instruct
-  #   supports_logprobs: false
 
 # ---------------------------------------------------------------------------
 # Confidence Extraction Methods

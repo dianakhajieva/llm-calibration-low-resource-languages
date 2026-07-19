@@ -10,7 +10,7 @@ tqdm                   # progress bars
 
 # Provider SDKs (install the ones for the models you use)
 openai                 # GPT models
-google-generativeai    # Gemini models
+google-genai           # Gemini models (new unified SDK; matches src/models.py)
 anthropic              # Claude models (optional)
 
 # Open-weight models, ONLY if you run them locally (Qwen, Llama, Aya).

@@ -1,3 +1,34 @@
+"""
+Generate publication-quality visualizations for multilingual
+LLM calibration experiments.
+
+Figures generated
+------------------
+  1. reliability_diagrams_grid.(png|pdf)
+        One figure, subplot grid = languages (rows) x models (cols).
+        Each panel: reliability curve, shaded over/under-confidence gap,
+        confidence-histogram inset, ECE + accuracy + n annotated.
+
+  2. confidence_histograms_grid.(png|pdf)
+        Same grid layout, confidence distribution per pair, with mean
+        confidence and accuracy marked.
+
+  3. accuracy_comparison.(png|pdf)
+        Overall accuracy per model, sorted, with 95% bootstrap CI error
+        bars (from compute_metrics.py) and value labels on bars.
+
+  4. ece_comparison.(png|pdf)
+        Overall ECE per model, sorted ascending (lower = better), with
+        95% bootstrap CI error bars and value labels.
+
+  5. ece_heatmap.(png|pdf)
+        Model x language ECE heatmap, showing calibration error for
+        every model-language combination at a glance.
+
+If GENERATE_INDIVIDUAL = True, also writes one reliability diagram and
+one confidence histogram per model-language pair, in addition to the
+grids above.
+"""
 
 from pathlib import Path
 
@@ -7,12 +38,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
-# ---------------------------------------------------------
-# Publication style
-# ---------------------------------------------------------
 
-# Serif font so figures blend into a LaTeX document (Times/CM-like).
-# Falls back gracefully if Computer Modern isn't installed locally.
 plt.rcParams.update({
     "font.family": "serif",
     "mathtext.fontset": "cm",
@@ -32,7 +58,7 @@ plt.rcParams.update({
 })
 
 # Colorblind-safe qualitative palette (Wong, 2011), reused everywhere
-# so a model has the same color in every figure of the paper.
+# so each model keeps the same color across every figure.
 PALETTE = [
     "#0072B2", "#D55E00", "#009E73", "#CC79A7",
     "#E69F00", "#56B4E9", "#F0E442", "#000000",
@@ -90,10 +116,14 @@ def load_predictions(config):
 # ---------------------------------------------------------
 
 
-def get_figure_directory():
-    """Create results/figures if it does not exist."""
+def get_figure_directory(config=None):
+    """Create the figures directory (from config if available) if needed."""
 
-    figure_dir = Path("results/figures")
+    if config is not None and "figures_dir" in config.get("paths", {}):
+        figure_dir = Path(config["paths"]["figures_dir"])
+    else:
+        figure_dir = Path("results/figures")
+
     figure_dir.mkdir(parents=True, exist_ok=True)
     return figure_dir
 
@@ -117,7 +147,7 @@ def compute_bins(confidence, correctness, n_bins=N_BINS, min_bin_size=MIN_BIN_SI
     Returns arrays of: bin_centers (mean confidence in bin), accuracies
     (mean correctness in bin), counts (n samples in bin), and the
     dataset-level ECE computed as the count-weighted average |acc-conf|
-    gap over ALL bins meeting min_bin_size (matches typical ECE defs).
+    gap over all bins meeting min_bin_size.
     """
 
     bins = np.linspace(0, 1, n_bins + 1)
@@ -152,7 +182,7 @@ def compute_bins(confidence, correctness, n_bins=N_BINS, min_bin_size=MIN_BIN_SI
 
 
 # ---------------------------------------------------------
-# Reliability diagram (single panel, reusable in grid or standalone)
+# Reliability diagram
 # ---------------------------------------------------------
 
 
@@ -176,8 +206,6 @@ def draw_reliability_panel(ax, df, model, language, color):
             label="Perfect calibration")
 
     if len(bin_centers) > 0:
-        # Shade the calibration gap: red-ish where overconfident
-        # (curve below diagonal), blue-ish where underconfident.
         ax.fill_between(
             bin_centers, bin_centers, accuracies,
             where=(accuracies < bin_centers),
@@ -192,8 +220,6 @@ def draw_reliability_panel(ax, df, model, language, color):
         ax.plot(bin_centers, accuracies, marker="o", markersize=4,
                  linewidth=1.8, color=color, zorder=3, label=model)
 
-        # Sample-count inset: shows how much mass backs each bin,
-        # so a reviewer can tell a "confident" bin from a noisy one.
         inset = ax.inset_axes([0.62, 0.08, 0.34, 0.28])
         inset.bar(bin_centers, counts, width=0.05, color=color, alpha=0.6)
         inset.set_xlim(0, 1)
@@ -221,8 +247,7 @@ def draw_reliability_panel(ax, df, model, language, color):
 
 def reliability_diagrams_grid(df, output_dir, color_map):
     """
-    One figure, subplot grid of languages (rows) x models (cols),
-    replacing the previous one-PNG-per-pair approach.
+    One figure, subplot grid of languages (rows) x models (cols).
     """
 
     models = sorted(df["model"].unique())
@@ -252,7 +277,7 @@ def reliability_diagrams_grid(df, output_dir, color_map):
 
 
 # ---------------------------------------------------------
-# Confidence histogram (single panel + grid)
+# Confidence histogram
 # ---------------------------------------------------------
 
 
@@ -307,7 +332,7 @@ def confidence_histograms_grid(df, output_dir, color_map):
 
 
 # ---------------------------------------------------------
-# Individual (supplementary) figures -- optional, off by default
+# Individual (supplementary) figures
 # ---------------------------------------------------------
 
 
@@ -333,7 +358,7 @@ def confidence_histogram(df, model, language, output_dir, color_map):
 
 
 # ---------------------------------------------------------
-# Accuracy comparison
+# Accuracy comparison (with bootstrap CI error bars, if available)
 # ---------------------------------------------------------
 
 
@@ -345,18 +370,33 @@ def accuracy_barplot(metrics, output_dir, color_map):
 
     colors = [color_map.get(m, "#888888") for m in overall["model"]]
 
+    has_ci = {"accuracy_ci_lower", "accuracy_ci_upper"}.issubset(overall.columns)
+
+    yerr = None
+    if has_ci:
+        lower_err = overall["accuracy"] - overall["accuracy_ci_lower"]
+        upper_err = overall["accuracy_ci_upper"] - overall["accuracy"]
+        yerr = [lower_err.to_numpy(), upper_err.to_numpy()]
+
     fig, ax = plt.subplots(figsize=(6.5, 4))
     bars = ax.bar(overall["model"], overall["accuracy"], color=colors,
-                   edgecolor="black", linewidth=0.6)
+                   edgecolor="black", linewidth=0.6,
+                   yerr=yerr, capsize=4,
+                   error_kw={"elinewidth": 1.2, "ecolor": "0.2"})
+
+    label_offset = (overall["accuracy_ci_upper"] if has_ci else overall["accuracy"]).max() * 0.02
 
     for bar, val in zip(bars, overall["accuracy"]):
-        ax.text(bar.get_x() + bar.get_width() / 2, val + 0.01,
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + label_offset,
                  f"{val:.3f}", ha="center", va="bottom", fontsize=8)
 
-    ax.set_ylim(0, min(1.05, overall["accuracy"].max() * 1.15))
+    ax.set_ylim(0, min(1.08, (overall["accuracy_ci_upper"] if has_ci else overall["accuracy"]).max() * 1.15))
     ax.set_ylabel("Accuracy")
     ax.set_xlabel("Model")
-    ax.set_title("Overall Accuracy by Model")
+    title = "Overall Accuracy by Model"
+    if has_ci:
+        title += " (error bars: 95% bootstrap CI)"
+    ax.set_title(title)
     ax.yaxis.set_major_locator(mticker.MultipleLocator(0.1))
     ax.grid(axis="x", visible=False)
     plt.setp(ax.get_xticklabels(), rotation=20, ha="right")
@@ -367,7 +407,7 @@ def accuracy_barplot(metrics, output_dir, color_map):
 
 
 # ---------------------------------------------------------
-# Expected Calibration Error comparison
+# Expected Calibration Error comparison (with bootstrap CI error bars)
 # ---------------------------------------------------------
 
 
@@ -379,17 +419,32 @@ def ece_barplot(metrics, output_dir, color_map):
 
     colors = [color_map.get(m, "#888888") for m in overall["model"]]
 
+    has_ci = {"ece_ci_lower", "ece_ci_upper"}.issubset(overall.columns)
+
+    yerr = None
+    if has_ci:
+        lower_err = overall["ece"] - overall["ece_ci_lower"]
+        upper_err = overall["ece_ci_upper"] - overall["ece"]
+        yerr = [lower_err.to_numpy(), upper_err.to_numpy()]
+
     fig, ax = plt.subplots(figsize=(6.5, 4))
     bars = ax.bar(overall["model"], overall["ece"], color=colors,
-                   edgecolor="black", linewidth=0.6)
+                   edgecolor="black", linewidth=0.6,
+                   yerr=yerr, capsize=4,
+                   error_kw={"elinewidth": 1.2, "ecolor": "0.2"})
+
+    label_offset = (overall["ece_ci_upper"] if has_ci else overall["ece"]).max() * 0.03
 
     for bar, val in zip(bars, overall["ece"]):
-        ax.text(bar.get_x() + bar.get_width() / 2, val + val * 0.02 + 0.001,
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + label_offset,
                  f"{val:.3f}", ha="center", va="bottom", fontsize=8)
 
     ax.set_ylabel("ECE (lower is better)")
     ax.set_xlabel("Model")
-    ax.set_title("Expected Calibration Error by Model")
+    title = "Expected Calibration Error by Model"
+    if has_ci:
+        title += " (error bars: 95% bootstrap CI)"
+    ax.set_title(title)
     ax.grid(axis="x", visible=False)
     plt.setp(ax.get_xticklabels(), rotation=20, ha="right")
 
@@ -406,10 +461,8 @@ def ece_barplot(metrics, output_dir, color_map):
 def ece_heatmap(metrics, output_dir):
     """
     Heatmap of ECE across models (rows) and languages (cols), excluding
-    the "Overall" pseudo-language. This is usually the single most
-    useful figure for a low-resource-language calibration paper: it
-    lets the reader spot at a glance which model/language cells are
-    worst-calibrated instead of scanning a results table.
+    the "Overall" pseudo-language. Shows calibration error for every
+    model-language combination at a glance.
     """
 
     per_lang = metrics[metrics["language"] != "Overall"].copy()
@@ -428,7 +481,6 @@ def ece_heatmap(metrics, output_dir):
     ax.set_yticks(range(len(pivot.index)))
     ax.set_yticklabels(pivot.index)
 
-    # Annotate each cell; flip text color for readability on dark cells.
     vmax = np.nanmax(pivot.values)
     for i in range(pivot.shape[0]):
         for j in range(pivot.shape[1]):
@@ -462,7 +514,7 @@ def main():
     metrics = load_metrics(config)
     predictions = load_predictions(config)
 
-    output_dir = get_figure_directory()
+    output_dir = get_figure_directory(config)
 
     color_map = model_color_map(predictions["model"].unique())
 

@@ -2,7 +2,13 @@
 
 ## Research Question
 
-Are Large Language Models (LLMs) less calibrated in low-resource languages such as Uzbek compared to higher-resource languages such as English and Russian?
+Does LLM accuracy and calibration degrade in lower-resource languages, and
+does that degradation generalize across language families, or is it specific
+to one? A study limited to a single low-resource language cannot distinguish
+a general resource-scarcity effect from a quirk of that particular language.
+This study tests two independent low-resource/high-resource pairs from
+unrelated families: Uzbek/Kazakh (Turkic) and Russian/Macedonian (Slavic),
+with English as a shared high-resource reference point.
 
 ## Dataset
 
@@ -10,31 +16,36 @@ Are Large Language Models (LLMs) less calibrated in low-resource languages such 
 
 ### Languages
 
-* English (`eng_Latn`)
-* Russian (`rus_Cyrl`)
-* Uzbek (`uzn_Latn`)
+* English (`eng_Latn`) — high-resource reference
+* Russian (`rus_Cyrl`) — high-resource Slavic
+* Macedonian (`mkd_Cyrl`) — low-resource Slavic
+* Uzbek (`uzn_Latn`) — low-resource Turkic
+* Kazakh (`kaz_Cyrl`) — low-resource Turkic
 
 ### Dataset Size
 
-* 900 questions per language
-* 500 questions sampled for evaluation
+* 900 questions aligned across English, Russian, and Uzbek
+* 500 questions sampled for evaluation (seed 42)
+* Kazakh and Macedonian aligned onto the same 500 questions via the
+  `(link, question_number)` composite key, so all five languages are
+  evaluated on identical underlying content
 
 ### Sampling Strategy
 
-A fixed benchmark of 500 questions was randomly sampled from the aligned multilingual dataset using:
-
-* Random seed: 42
+A fixed benchmark of 500 questions was sampled using random seed 42. Kazakh
+and Macedonian content was merged onto this same fixed sample via
+`src/add_language.py`, which aligns by question identity rather than
+resampling, guaranteeing all five languages share the same 500 questions.
 
 ## Models
 
 * GPT-4o
 * Gemini 2.5 Flash
-* Qwen 2.5 7B Instruct
-* Aya Expanse 8B
+* Claude Sonnet
 
 ## Confidence Method
 
-Verbalized confidence (0–100)
+Verbalized confidence (0-100).
 
 Example:
 
@@ -43,28 +54,37 @@ ANSWER: B
 CONFIDENCE: 87
 ```
 
+A logprob-based confidence method was scoped but not implemented, since it
+would require model-specific extraction logic not uniformly available across
+the three evaluated providers. Noted as a limitation and future-work
+direction.
+
 ## Evaluation Metrics
 
-* Accuracy
-* Expected Calibration Error (ECE)
+* Accuracy, with 95% bootstrap confidence intervals
+* Expected Calibration Error (ECE), with 95% bootstrap confidence intervals
 * Brier Score
 * Reliability Diagrams
+* Paired bootstrap significance tests (1,000 resamples) between every pair of
+  languages, within each model, for both accuracy and ECE
+* Benjamini-Hochberg FDR correction across all pairwise tests, reported both
+  within each metric family and across the full set of tests as a robustness
+  check
 
----
+## Alignment Procedure
 
-# Dataset Validation
+Questions are uniquely identified using the composite key:
 
-## Validation Results
+```text
+(link, question_number)
+```
 
-### Language Availability
+`link` alone is not unique (a single article contains multiple questions);
+`question_number` alone is not globally unique either. The composite key
+successfully aligns all five languages onto one fixed 500-question sample:
+488 shared source articles, complete alignment, no missing matches.
 
-Successfully loaded and validated:
-
-* English (`eng_Latn`)
-* Russian (`rus_Cyrl`)
-* Uzbek (`uzn_Latn`)
-
-### Dataset Structure
+## Dataset Structure
 
 Each question contains:
 
@@ -73,152 +93,37 @@ Each question contains:
 * Four answer choices
 * Correct answer label
 
-### Questions per Language
+## Key Results
 
-| Language | Questions |
-| -------- | --------- |
-| English  | 900       |
-| Russian  | 900       |
-| Uzbek    | 900       |
-
-## Alignment Investigation
-
-Several alignment strategies were investigated.
-
-### Rejected Approaches
-
-#### `question_number`
-
-Not globally unique.
-
-#### `link`
-
-Not globally unique.
-
-A single article may contain multiple questions.
-
-### Final Alignment Key
-
-Questions are uniquely identified using:
-
-```text
-(link, question_number)
-```
-
-This composite key successfully aligned all three languages.
-
-### Alignment Outcome
-
-* 900 aligned multilingual questions
-* 488 shared source articles
-* Complete alignment across English, Russian, and Uzbek
+Accuracy differences across languages remain largely significant after FDR
+correction, supporting a structure where English significantly outperforms
+all other languages, and Kazakh is significantly worse than Russian and
+Macedonian, across all three models. Calibration (ECE) differences are far
+less robust: no pairwise ECE comparison survives FDR correction within the
+ECE test family, indicating that observed calibration gradients in the raw
+data are not statistically distinguishable from noise at this sample size.
+This dissociation between accuracy degradation (robust, generalizes across
+both language families) and calibration degradation (not statistically
+established) is a central finding of the study.
 
 ---
 
-# Milestone 1 Completed
+# Limitations
 
-✅ Loaded Belebele dataset
+* Verbalized confidence only; no logprob-based confidence comparison
+* Confidence distributions are near-degenerate (mass concentrated near
+  90-100% regardless of correctness), which limits ECE's sensitivity
+* Three closed frontier models only; no open-weight model comparison
+* Single prompt template, temperature 0, no cross-prompt robustness check
+* Five languages across two families; generalization to other language
+  families untested
+* No pairwise ECE difference survives multiple-comparisons correction; the
+  calibration-degradation hypothesis is not conclusively established at this
+  sample size
 
-✅ Explored dataset structure
+# Next Steps (beyond current scope)
 
-✅ Validated language availability
-
-✅ Investigated multilingual alignment
-
-✅ Identified composite key (`link`, `question_number`)
-
-✅ Built multilingual aligned dataset
-
-✅ Generated fixed benchmark of 500 questions
-
-✅ Prepared dataset for model evaluation
-
----
-
-# Next Milestone
-
-## Model Evaluation Pipeline
-
-Upcoming tasks:
-
-* Prompt design
-* Response parsing
-* Model integration
-* Confidence extraction
-* Calibration metric implementation
-* Reliability diagram generation
-* Cross-language evaluation
-
-# Milestone 2 Completed
-
-## Prompt Design
-
-A standardized prompt template was created to ensure consistent evaluation across all models and languages.
-
-Prompt requirements:
-
-* Present passage, question, and answer choices.
-* Force selection of exactly one answer.
-* Require confidence reporting on a 0–100 scale.
-* Use a fixed output format for automated parsing.
-
-Example output:
-
-```text
-ANSWER: B
-CONFIDENCE: 87
-```
-
-## Response Parsing
-
-A parser was implemented to automatically extract:
-
-* Predicted answer
-* Confidence score
-
-from model responses.
-
-Example:
-
-Input:
-
-```text
-ANSWER: B
-CONFIDENCE: 87
-```
-
-Output:
-
-```python
-{
-    "answer": "B",
-    "confidence": 87
-}
-```
-
-## Validation
-
-* Prompt template successfully generated.
-* Parser successfully extracted answers and confidence scores.
-* Components are ready for integration with model APIs.
-
-## Next Milestone
-
-Model Integration and Pilot Evaluation
-
-Planned tasks:
-
-* Connect selected LLM APIs.
-* Run a pilot experiment on a small sample of questions.
-* Validate answer extraction and confidence collection.
-* Store outputs for calibration analysis.
-
-## Milestone 4 — OpenAI Integration
-
-Completed:
-
-- Integrated GPT-4o API.
-- Verified prompt formatting.
-- Verified parser.
-- Executed evaluation on 5 English, 5 Russian, and 5 Uzbek questions.
-- Generated prediction CSV in `results/raw_outputs/openai_test.csv`.
+* Logprob-based confidence extraction for at least one provider, as a
+  comparison point against verbalized confidence
+* Additional low-resource languages or open-weight models, if pursued as
+  follow-up work beyond this submission
