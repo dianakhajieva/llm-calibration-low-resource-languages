@@ -17,9 +17,6 @@ results/raw_outputs/*
 results/processed/*
 !results/processed/.gitkeep
 
-results/figures/*
-!results/figures/.gitkeep
-
 data/raw/*
 !data/raw/.gitkeep
 

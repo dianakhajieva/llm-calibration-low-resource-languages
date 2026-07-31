@@ -38,6 +38,11 @@ import numpy as np
 import pandas as pd
 import yaml
 
+# Single source of truth for ECE: the same function the metrics use.
+try:
+    from src.compute_metrics import _ece_from_arrays
+except ImportError:
+    from compute_metrics import _ece_from_arrays
 
 plt.rcParams.update({
     "font.family": "serif",
@@ -173,10 +178,10 @@ def compute_bins(confidence, correctness, n_bins=N_BINS, min_bin_size=MIN_BIN_SI
     accuracies = np.array(accuracies)
     counts = np.array(counts)
 
-    if counts.sum() > 0:
-        ece = np.sum(counts * np.abs(accuracies - bin_centers)) / counts.sum()
-    else:
-        ece = np.nan
+    # ECE must be computed over ALL predictions with the same 15-bin
+    # procedure as compute_metrics.py; min_bin_size only affects which
+    # points are PLOTTED, never the reported number.
+    ece = _ece_from_arrays(confidence, correctness, n_bins=n_bins)
 
     return bin_centers, accuracies, counts, ece
 
